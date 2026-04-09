@@ -1,0 +1,31 @@
+# ambiente virtual
+venv/
+.venv/
+env/
+
+# variáveis de ambiente
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# testes
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.sw?
+.DS_Store
+
+# build
+dist/
+build/
+*.egg-info/
