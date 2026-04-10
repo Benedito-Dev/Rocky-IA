@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import RockyOrb from '../components/RockyOrb'
 import ChatInput from '../components/ChatInput'
 import ResponseDrawer from '../components/ResponseDrawer'
-import { sendMessageWithSpeech } from '../services/api'
+import { sendMessageWithSpeech, sendAudioWithSpeech } from '../services/api'
 
 const PREVIEW_WORDS = 18
 
@@ -29,6 +29,42 @@ export default function ChatScreen() {
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [])
+
+  async function handleAudio(audioBlob) {
+    setDrawerOpen(false)
+    setOrbState('thinking')
+    setResponse('')
+
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+    }
+
+    try {
+      const { text: reply, audioUrl } = await sendAudioWithSpeech(audioBlob)
+      setResponse(reply)
+      setOrbState('speaking')
+
+      const audio = new Audio(audioUrl)
+      audioRef.current = audio
+      audio.play().catch(() => setOrbState('idle'))
+      audio.addEventListener('ended', () => {
+        setOrbState('idle')
+        audioRef.current = null
+        setTimeout(() => URL.revokeObjectURL(audioUrl), 1000)
+        inputRef.current?.focus()
+      })
+      audio.addEventListener('error', () => {
+        setOrbState('idle')
+        audioRef.current = null
+        inputRef.current?.focus()
+      })
+    } catch (e) {
+      console.error(e)
+      setOrbState('idle')
+      inputRef.current?.focus()
+    }
+  }
 
   async function handleSend(text) {
     setDrawerOpen(false)
@@ -101,7 +137,7 @@ export default function ChatScreen() {
 
       {/* input */}
       <div className="flex justify-center">
-        <ChatInput ref={inputRef} onSend={handleSend} disabled={orbState === 'thinking' || orbState === 'speaking'} />
+        <ChatInput ref={inputRef} onSend={handleSend} onAudio={handleAudio} disabled={orbState === 'thinking' || orbState === 'speaking'} />
       </div>
 
       {/* drawer */}

@@ -4,3 +4,5 @@ pydantic-settings
 google-genai
 python-dotenv
 httpx
+python-multipart
+groq
