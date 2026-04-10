@@ -1,0 +1,17 @@
+# Frontend
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.vite/
+
+# Backend
+Backend/.env
+Backend/venv/
+Backend/.venv/
+Backend/__pycache__/
+Backend/**/__pycache__/
+Backend/**/*.py[cod]
+
+# Sistema
+.DS_Store
+*.suo
+*.sw?

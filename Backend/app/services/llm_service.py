@@ -1,5 +1,6 @@
 from groq import Groq
 from app.core.config import settings
+from app.services.memory_service import memory
 
 client = Groq(api_key=settings.GROQ_API_KEY)
 
@@ -58,11 +59,15 @@ Lembre: não é só o jeito de falar — é a intenção. Sempre clara. Sempre �
 """
 
 def ask(message: str) -> str:
+    memory.add("user", message)
+
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + memory.get()
+
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": message}
-        ]
+        messages=messages
     )
-    return response.choices[0].message.content
+
+    reply = response.choices[0].message.content
+    memory.add("assistant", reply)
+    return reply
