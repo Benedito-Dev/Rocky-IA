@@ -1,21 +1,22 @@
 import { useState, useRef, useEffect } from 'react'
 import RockyOrb from '../components/RockyOrb'
 import ChatInput from '../components/ChatInput'
-import ResponseDrawer from '../components/ResponseDrawer'
-import { sendMessageWithSpeech, sendAudioWithSpeech } from '../services/api'
-
-const PREVIEW_WORDS = 18
+import ChatMessage from '../components/ChatMessage'
+import { sendMessageWithSpeech, sendMessageStream, sendAudioWithSpeech } from '../services/api'
 
 export default function ChatScreen() {
   const [orbState, setOrbState] = useState('idle')
-  const [response, setResponse] = useState('')
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [messages, setMessages] = useState([])
+  const [silent, setSilent] = useState(false)
   const audioRef = useRef(null)
   const inputRef = useRef(null)
+  const bottomRef = useRef(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
 
   useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   useEffect(() => {
     function handleKey(e) {
@@ -30,71 +31,83 @@ export default function ChatScreen() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [])
 
-  async function handleAudio(audioBlob) {
-    setDrawerOpen(false)
-    setOrbState('thinking')
-    setResponse('')
-
+  function stopAudio() {
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current = null
     }
+  }
 
-    try {
-      const { text: reply, audioUrl } = await sendAudioWithSpeech(audioBlob)
-      setResponse(reply)
-      setOrbState('speaking')
+  function addMessage(role, content) {
+    setMessages(prev => [...prev, { role, content }])
+  }
 
-      const audio = new Audio(audioUrl)
-      audioRef.current = audio
-      audio.play().catch(() => setOrbState('idle'))
-      audio.addEventListener('ended', () => {
-        setOrbState('idle')
-        audioRef.current = null
-        setTimeout(() => URL.revokeObjectURL(audioUrl), 1000)
-        inputRef.current?.focus()
-      })
-      audio.addEventListener('error', () => {
-        setOrbState('idle')
-        audioRef.current = null
-        inputRef.current?.focus()
-      })
-    } catch (e) {
-      console.error(e)
+  function updateLastAssistant(content) {
+    setMessages(prev => {
+      const copy = [...prev]
+      const last = copy[copy.length - 1]
+      if (last?.role === 'assistant') copy[copy.length - 1] = { ...last, content }
+      else copy.push({ role: 'assistant', content })
+      return copy
+    })
+  }
+
+  function playAudio(audioUrl) {
+    const audio = new Audio(audioUrl)
+    audioRef.current = audio
+    setOrbState('speaking')
+    audio.play().catch(() => setOrbState('idle'))
+    audio.addEventListener('ended', () => {
       setOrbState('idle')
+      audioRef.current = null
+      setTimeout(() => URL.revokeObjectURL(audioUrl), 1000)
       inputRef.current?.focus()
-    }
+    })
+    audio.addEventListener('error', () => {
+      setOrbState('idle')
+      audioRef.current = null
+      inputRef.current?.focus()
+    })
   }
 
   async function handleSend(text) {
-    setDrawerOpen(false)
+    stopAudio()
+    addMessage('user', text)
     setOrbState('thinking')
-    setResponse('')
 
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
+    if (silent) {
+      try {
+        addMessage('assistant', '')
+        setOrbState('speaking')
+        await sendMessageStream(text, updateLastAssistant)
+        setOrbState('idle')
+        inputRef.current?.focus()
+      } catch (e) {
+        console.error(e)
+        setOrbState('idle')
+        inputRef.current?.focus()
+      }
+    } else {
+      try {
+        const { text: reply, audioUrl } = await sendMessageWithSpeech(text)
+        addMessage('assistant', reply)
+        playAudio(audioUrl)
+      } catch (e) {
+        console.error(e)
+        setOrbState('idle')
+        inputRef.current?.focus()
+      }
     }
+  }
 
+  async function handleAudio(audioBlob) {
+    stopAudio()
+    setOrbState('thinking')
     try {
-      const { text: reply, audioUrl } = await sendMessageWithSpeech(text)
-      setResponse(reply)
-      setOrbState('speaking')
-
-      const audio = new Audio(audioUrl)
-      audioRef.current = audio
-      audio.play().catch(() => setOrbState('idle'))
-      audio.addEventListener('ended', () => {
-        setOrbState('idle')
-        audioRef.current = null
-        setTimeout(() => URL.revokeObjectURL(audioUrl), 1000)
-        inputRef.current?.focus()
-      })
-      audio.addEventListener('error', () => {
-        setOrbState('idle')
-        audioRef.current = null
-        inputRef.current?.focus()
-      })
+      const { text: reply, transcription, audioUrl } = await sendAudioWithSpeech(audioBlob)
+      addMessage('user', transcription)
+      addMessage('assistant', reply)
+      playAudio(audioUrl)
     } catch (e) {
       console.error(e)
       setOrbState('idle')
@@ -102,51 +115,31 @@ export default function ChatScreen() {
     }
   }
 
-  const words = (response || '').split(' ')
-  const isLong = words.length > PREVIEW_WORDS
-  const preview = isLong ? words.slice(0, PREVIEW_WORDS).join(' ') + '...' : response
-
   return (
     <div className="flex flex-col h-screen bg-zinc-900 overflow-hidden">
-
-      {/* layout principal */}
-      <div className="flex-1 flex flex-col items-center justify-center">
-
-        {/* orb */}
-        <div className="w-[420px] h-[420px] drop-shadow-[0_0_80px_rgba(6,182,212,0.3)]">
+      <div className="flex-1 flex flex-col items-center overflow-y-auto px-4 pt-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="w-[380px] h-[380px] shrink-0 drop-shadow-[0_0_80px_rgba(6,182,212,0.3)]">
           <RockyOrb state={orbState} />
         </div>
-
-        {/* preview da resposta */}
-        {response && (
-          <div className="max-w-lg text-center px-6 mt-2">
-            <p className="text-cyan-400/80 font-mono text-sm leading-relaxed">
-              {preview}
-            </p>
-            {isLong && (
-              <button
-                onClick={() => setDrawerOpen(true)}
-                className="mt-2 text-cyan-600 hover:text-cyan-400 font-mono text-xs transition-colors"
-              >
-                ver resposta completa ↓
-              </button>
-            )}
+        {messages.length > 0 && (
+          <div className="w-full max-w-2xl flex flex-col gap-3 mt-6 pb-4">
+            {messages.map((msg, i) => (
+              <ChatMessage key={i} message={msg} />
+            ))}
+            <div ref={bottomRef} />
           </div>
         )}
       </div>
-
-      {/* input */}
-      <div className="flex justify-center">
-        <ChatInput ref={inputRef} onSend={handleSend} onAudio={handleAudio} disabled={orbState === 'thinking' || orbState === 'speaking'} />
-      </div>
-
-      {/* drawer */}
-      {drawerOpen && (
-        <ResponseDrawer
-          response={response}
-          onClose={() => setDrawerOpen(false)}
+      <div className="flex justify-center border-t border-cyan-900/20">
+        <ChatInput
+          ref={inputRef}
+          onSend={handleSend}
+          onAudio={handleAudio}
+          onToggleSilent={() => setSilent(s => !s)}
+          silent={silent}
+          disabled={orbState === 'thinking' || orbState === 'speaking'}
         />
-      )}
+      </div>
     </div>
   )
 }

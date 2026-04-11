@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from app.models.chat import ChatRequest, ChatResponse
-from app.services.llm_service import ask
+from app.services.llm_service import ask, ask_stream
 from app.services.tts_service import text_to_speech
 from groq import Groq
 from app.core.config import settings
@@ -31,6 +31,17 @@ async def speak(request: ChatRequest):
     except Exception as e:
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@router.post("/stream")
+async def stream(request: ChatRequest):
+    def generate():
+        try:
+            for token in ask_stream(request.message):
+                yield token
+        except Exception as e:
+            traceback.print_exc()
+            yield f"[ERRO: {str(e)}]"
+    return StreamingResponse(generate(), media_type="text/plain")
 
 @router.post("/transcribe")
 async def transcribe(file: UploadFile = File(...)):

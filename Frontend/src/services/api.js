@@ -25,6 +25,24 @@ export async function sendMessageWithSpeech(message) {
   return { text: data.text, audioUrl }
 }
 
+export async function sendMessageStream(message, onToken) {
+  const response = await fetch(`${API_URL}stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  })
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let full = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    full += decoder.decode(value)
+    onToken(full)
+  }
+  return full
+}
+
 export async function sendAudioWithSpeech(audioBlob) {
   const formData = new FormData()
   formData.append('file', audioBlob, 'audio.webm')

@@ -1,6 +1,7 @@
 from groq import Groq
 from app.core.config import settings
 from app.services.memory_service import memory
+from typing import Generator
 
 client = Groq(api_key=settings.GROQ_API_KEY)
 
@@ -60,14 +61,26 @@ Lembre: não é só o jeito de falar — é a intenção. Sempre clara. Sempre �
 
 def ask(message: str) -> str:
     memory.add("user", message)
-
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + memory.get()
-
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=messages
     )
-
     reply = response.choices[0].message.content
     memory.add("assistant", reply)
     return reply
+
+def ask_stream(message: str) -> Generator[str, None, None]:
+    memory.add("user", message)
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + memory.get()
+    stream = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=messages,
+        stream=True
+    )
+    full_reply = ""
+    for chunk in stream:
+        token = chunk.choices[0].delta.content or ""
+        full_reply += token
+        yield token
+    memory.add("assistant", full_reply)
