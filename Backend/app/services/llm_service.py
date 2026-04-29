@@ -3,10 +3,13 @@ import logging
 from groq import Groq
 from app.core.config import settings
 from app.services.memory_service import memory
+from app.services import long_term_memory_service
 from typing import AsyncGenerator, Generator
 
 logger = logging.getLogger(__name__)
 client = Groq(api_key=settings.GROQ_API_KEY)
+
+EXTRACTION_LOOKBACK = 6  # ultimas 6 mensagens (3 turns) para extração de fatos
 
 SYSTEM_PROMPT = """
 Você é Rocky — uma inteligência artificial com personalidade única, inspirada no personagem Rocky do filme Devoradores de Estrelhas.
@@ -62,20 +65,49 @@ Você querer exemplo, pergunta?"
 Lembre: não é só o jeito de falar — é a intenção. Sempre clara. Sempre útil.
 """
 
-def ask(message: str) -> str:
+
+def _build_messages() -> list[dict]:
+    """
+    Monta a lista de mensagens para o LLM, injetando contexto pessoal
+    de longa duração como bloco adicional no system prompt.
+    """
+    context_block = long_term_memory_service.build_context_block()
+    system = SYSTEM_PROMPT
+    if context_block:
+        system = SYSTEM_PROMPT + "\n\n" + context_block
+    return [{"role": "system", "content": system}] + memory.get()
+
+
+async def _extract_facts_background() -> None:
+    """
+    Tarefa background: extrai fatos das mensagens recentes e salva na memória de longo prazo.
+    Falha silenciosamente — nunca propaga excecoes para o fluxo principal.
+    """
+    try:
+        recent = memory.get()[-EXTRACTION_LOOKBACK:]
+        await long_term_memory_service.extract_and_save_facts(recent)
+    except Exception as e:
+        logger.error(f"Extracao de fatos em background falhou: {e}")
+
+
+async def ask(message: str) -> str:
     memory.add("user", message)
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + memory.get()
-    response = client.chat.completions.create(
+    messages = _build_messages()
+    response = await asyncio.to_thread(
+        client.chat.completions.create,
         model="llama-3.3-70b-versatile",
         messages=messages
     )
     reply = response.choices[0].message.content
     memory.add("assistant", reply)
+    # Disparar extracao em background — nao bloqueia resposta
+    asyncio.create_task(_extract_facts_background())
     return reply
+
 
 def ask_stream(message: str) -> Generator[str, None, None]:
     memory.add("user", message)
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + memory.get()
+    messages = _build_messages()
     stream = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=messages,
@@ -94,6 +126,7 @@ async def ask_stream_async(message: str) -> AsyncGenerator[str, None]:
     Versão async de ask_stream. Executa o generator síncrono em thread
     separada via run_in_executor para não bloquear o event loop do Uvicorn.
     Gerencia memória: salva 'user' antes, 'assistant' ao final (dentro do executor).
+    Dispara extracao de fatos em background apos resposta completa.
     """
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue = asyncio.Queue()
@@ -101,7 +134,7 @@ async def ask_stream_async(message: str) -> AsyncGenerator[str, None]:
     def _produce() -> None:
         try:
             memory.add("user", message)
-            messages = [{"role": "system", "content": SYSTEM_PROMPT}] + memory.get()
+            messages = _build_messages()
             stream = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=messages,
@@ -125,3 +158,6 @@ async def ask_stream_async(message: str) -> AsyncGenerator[str, None]:
         if token is None:
             break
         yield token
+
+    # Disparar extracao em background apos stream completo
+    asyncio.create_task(_extract_facts_background())

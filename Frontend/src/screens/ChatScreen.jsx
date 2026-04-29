@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { sendMessageWithSpeechStream, sendAudioWithSpeech } from '../services/api';
+import { sendMessageWithSpeechStream, sendAudioWithSpeech, summarizeSession, API_URL } from '../services/api';
 import Presence from '../components/Presence';
 import StreamingResponse from '../components/StreamingResponse';
 import UserEcho from '../components/UserEcho';
@@ -44,6 +44,7 @@ export default function ChatScreen() {
   const streamCtxRef = useRef(null);      // AudioContext exclusivo do pipeline de streaming
   const analyserStreamRef = useRef(null); // AnalyserNode do pipeline de streaming
   const playNextInQueueRef = useRef(null); // ref para quebrar dependência circular
+  const inactivityRef = useRef(null);     // timer de inatividade para summarize
 
   useEffect(() => { appStateRef.current = appState; }, [appState]);
 
@@ -53,6 +54,16 @@ export default function ChatScreen() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Resumo de sessão ao fechar a aba/janela
+  useEffect(() => {
+    const handleUnload = () => {
+      // sendBeacon garante envio mesmo durante unload (fetch nao é confiável aqui)
+      navigator.sendBeacon(`${API_URL}summarize`)
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    return () => window.removeEventListener('beforeunload', handleUnload)
+  }, [])
 
   // Sequência de ativação
   useEffect(() => {
@@ -148,6 +159,9 @@ export default function ChatScreen() {
         setAudioLevel(0);
         fadeRef.current = setTimeout(() => setResponseVisible(false), 6500);
         echoFadeRef.current = setTimeout(() => setEchoVisible(false), 5500);
+        // Timer de inatividade: resumir sessao apos 5 minutos sem interacao
+        clearTimeout(inactivityRef.current);
+        inactivityRef.current = setTimeout(() => summarizeSession(), 5 * 60 * 1000);
       }
       return;
     }
@@ -405,8 +419,9 @@ export default function ChatScreen() {
     setStreaming(true);
     setAppState('thinking');
 
-    // Limpar estado de stream anterior
+    // Limpar estado de stream anterior e timer de inatividade
     stopStream();
+    clearTimeout(inactivityRef.current);
 
     // AudioContext criado aqui — dentro de user gesture (evento de UI) — evita bloqueio do browser
     if (!streamCtxRef.current) {
@@ -474,6 +489,7 @@ export default function ChatScreen() {
         stopPlayback();
         stopRecording();
         stopStream();
+        clearTimeout(inactivityRef.current);
         setAppState('idle');
         setAudioLevel(0);
         setStreaming(false);

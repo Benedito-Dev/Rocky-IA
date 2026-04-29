@@ -77,6 +77,33 @@
 
 ---
 
+## Task 4 - COMPLETE
+
+**Module:** memory, llm, api, frontend
+**Task:** Memória de Longo Prazo — Rocky lembra entre sessões
+**Status:** COMPLETA
+**Date:** 2026-04-29
+**Duration:** ~4h
+**Quality Score:** 8/10 (NEEDS_CHANGES resolvido pelo Orchestrador)
+
+**Deliverables:**
+- [x] Tabela long_term_memory no SQLite (CREATE TABLE IF NOT EXISTS)
+- [x] long_term_memory_repository com deduplicação Jaccard + SequenceMatcher
+- [x] long_term_memory_service com extração LLM e parser JSON robusto
+- [x] ask() convertido para async com asyncio.to_thread
+- [x] _build_messages() injeta CONTEXTO PESSOAL no system prompt
+- [x] Extração de fatos em background task (não bloqueia resposta)
+- [x] Endpoint POST /summarize (aceita body vazio via sendBeacon)
+- [x] Frontend: beforeunload + timer de inatividade 5min
+- [x] API_URL exportado (fix URL hardcoded no sendBeacon)
+
+**Metrics:**
+- Frontend build: PASS
+- ESLint: 0 errors
+- Backend syntax: PASS
+
+---
+
 ## Tasks Concluidas (histórico de agents)
 
 <!-- dedup:documenter:unknown -->
@@ -155,5 +182,71 @@
 **Task:** #1
 **Timestamp:** 29/04/2026 00:56:58
 **Agent:** documenter
+**Status:** Concluido
+
+
+---
+
+<!-- dedup:documenter:2 -->
+### Agent Concluido: documenter
+
+**Task:** #2
+**Timestamp:** 29/04/2026 18:54:18
+**Agent:** documenter
+**Status:** Concluido
+
+
+---
+
+<!-- dedup:reviewer:2 -->
+### Agent Concluido: reviewer
+
+**Task:** #2
+**Timestamp:** 29/04/2026 18:54:18
+**Agent:** reviewer
+**Status:** Concluido
+
+
+---
+
+<!-- dedup:implementer:2 -->
+### Agent Concluido: implementer
+
+**Task:** #2
+**Timestamp:** 29/04/2026 18:54:18
+**Agent:** implementer
+**Status:** Concluido
+
+
+---
+
+<!-- dedup:strategist:2 -->
+### Agent Concluido: strategist
+
+**Task:** #2
+**Timestamp:** 29/04/2026 18:54:18
+**Agent:** strategist
+**Status:** Concluido
+
+
+---
+
+<!-- dedup:implementer:4 -->
+### Agent Concluido: implementer
+
+**Task:** #4
+**Timestamp:** 29/04/2026 19:17:01
+**Agent:** implementer
+**Status:** Concluido
+
+
+---
+
+<!-- dedup:reviewer:4 -->
+### Agent Concluido: reviewer
+
+**Task:** #4
+**Timestamp:** 29/04/2026 19:20:58
+**Agent:** reviewer
 **Status:** Concluido
 

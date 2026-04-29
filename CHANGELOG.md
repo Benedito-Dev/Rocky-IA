@@ -28,6 +28,13 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   - Fila de AudioBufferSourceNode no frontend para reprodução sem gap
   - AbortController cancela stream ao pressionar Escape
 
+- **[Memory]** (Task 4) Memória de longo prazo entre sessões
+  - Tabela SQLite long_term_memory com deduplicação automática (Jaccard + SequenceMatcher 0.85)
+  - Extração automática de fatos via LLM Groq após cada resposta (background task)
+  - CONTEXTO PESSOAL injetado no system prompt a cada conversa
+  - Endpoint POST /summarize para resumo de sessão (compatível com sendBeacon)
+  - Frontend: resumo automático ao fechar aba e após 5min de inatividade
+
 ### Fixed
 - **[Backend]** Substituição de traceback.print_exc() por logger.exception() em chat.py
 - **[Backend]** asyncio.get_running_loop() em vez de get_event_loop() (Python 3.10+ compat)

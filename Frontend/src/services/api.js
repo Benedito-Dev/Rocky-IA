@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:8000/api/v1/chat/'
+export const API_URL = 'http://127.0.0.1:8000/api/v1/chat/'
 
 export async function sendMessage(message) {
   const response = await fetch(API_URL, {
@@ -57,6 +57,14 @@ export async function sendAudioWithSpeech(audioBlob) {
   )
   const audioUrl = URL.createObjectURL(replyBlob)
   return { text: data.text, transcription: data.transcription, audioUrl }
+}
+
+export async function summarizeSession() {
+  try {
+    await fetch(`${API_URL}summarize`, { method: 'POST' })
+  } catch {
+    // fire-and-forget: falha silenciosa — nao impacta UX
+  }
 }
 
 /**

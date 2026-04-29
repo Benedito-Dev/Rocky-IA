@@ -29,9 +29,9 @@ Marcar `[x]` ao concluir cada item.
 
 ### 2. Memória Real
 
-- [ ] **Memória de longo prazo** — salvar fatos importantes sobre o usuário (projetos, preferências, contexto) em SQLite com busca semântica simples
-- [ ] **Resumo automático de sessão** — ao encerrar, Rocky extrai os pontos relevantes e salva; na próxima sessão carrega esse contexto
-- [ ] **Recuperação por referência** — "Rocky, lembra que te falei sobre X?" funcionar de verdade
+- [x] **Memória de longo prazo** — salvar fatos importantes sobre o usuário (projetos, preferências, contexto) em SQLite com busca semântica simples
+- [x] **Resumo automático de sessão** — ao encerrar, Rocky extrai os pontos relevantes e salva; na próxima sessão carrega esse contexto
+- [x] **Recuperação por referência** — "Rocky, lembra que te falei sobre X?" funcionar de verdade
 
 ### 3. Consciência do Ambiente
 

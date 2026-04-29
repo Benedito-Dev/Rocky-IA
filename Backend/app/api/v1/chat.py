@@ -2,14 +2,16 @@ import base64
 import json
 import logging
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import JSONResponse, StreamingResponse
 from groq import Groq
 
 from app.core.config import settings
-from app.models.chat import ChatRequest, ChatResponse
+from app.models.chat import ChatRequest, ChatResponse, FactItem, SummarizeResponse
 from app.services.llm_service import ask, ask_stream, ask_stream_async
 from app.services.tts_service import flush_sentence, synthesize_sentence, text_to_speech
+from app.services.memory_service import memory
+from app.services import long_term_memory_service
 
 logger = logging.getLogger(__name__)
 
@@ -17,25 +19,28 @@ _groq = Groq(api_key=settings.GROQ_API_KEY)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+
 @router.post("/", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     try:
-        response = ask(request.message)
+        response = await ask(request.message)
         return ChatResponse(response=response)
     except Exception as e:
         logger.exception(f"Erro em /chat/: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/speak")
 async def speak(request: ChatRequest):
     try:
-        text = ask(request.message)
+        text = await ask(request.message)
         audio = await text_to_speech(text)
         audio_b64 = base64.b64encode(audio).decode("utf-8")
         return JSONResponse(content={"text": text, "audio": audio_b64})
     except Exception as e:
         logger.exception(f"Erro em /chat/speak: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/stream")
 async def stream(request: ChatRequest):
@@ -47,6 +52,7 @@ async def stream(request: ChatRequest):
             logger.error(f"Erro em /chat/stream: {e}")
             yield f"[ERRO: {str(e)}]"
     return StreamingResponse(generate(), media_type="text/plain")
+
 
 @router.post("/transcribe")
 async def transcribe(file: UploadFile = File(...)):
@@ -60,7 +66,7 @@ async def transcribe(file: UploadFile = File(...)):
         user_text = transcription.text.strip()
         if not user_text:
             return JSONResponse(status_code=400, content={"detail": "Áudio sem conteúdo."})
-        reply = ask(user_text)
+        reply = await ask(user_text)
         audio = await text_to_speech(reply)
         audio_b64 = base64.b64encode(audio).decode("utf-8")
         return JSONResponse(content={"transcription": user_text, "text": reply, "audio": audio_b64})
@@ -115,3 +121,23 @@ async def speak_stream(request: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/summarize", response_model=SummarizeResponse)
+async def summarize(request: Request):
+    """
+    Extrai e salva fatos relevantes da sessão atual na memória de longo prazo.
+    Aceita body vazio (compatível com navigator.sendBeacon que envia Content-Type: text/plain).
+    """
+    try:
+        recent = memory.get()[-10:]
+        if not recent:
+            return SummarizeResponse(facts_saved=0, facts=[])
+        facts = await long_term_memory_service.extract_and_save_facts(recent)
+        return SummarizeResponse(
+            facts_saved=len(facts),
+            facts=[FactItem(**f) for f in facts]
+        )
+    except Exception as e:
+        logger.exception(f"Erro em /chat/summarize: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
