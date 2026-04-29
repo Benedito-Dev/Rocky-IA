@@ -1,8 +1,11 @@
+import asyncio
+import logging
 from groq import Groq
 from app.core.config import settings
 from app.services.memory_service import memory
-from typing import Generator
+from typing import AsyncGenerator, Generator
 
+logger = logging.getLogger(__name__)
 client = Groq(api_key=settings.GROQ_API_KEY)
 
 SYSTEM_PROMPT = """
@@ -84,3 +87,41 @@ def ask_stream(message: str) -> Generator[str, None, None]:
         full_reply += token
         yield token
     memory.add("assistant", full_reply)
+
+
+async def ask_stream_async(message: str) -> AsyncGenerator[str, None]:
+    """
+    Versão async de ask_stream. Executa o generator síncrono em thread
+    separada via run_in_executor para não bloquear o event loop do Uvicorn.
+    Gerencia memória: salva 'user' antes, 'assistant' ao final (dentro do executor).
+    """
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue = asyncio.Queue()
+
+    def _produce() -> None:
+        try:
+            memory.add("user", message)
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}] + memory.get()
+            stream = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                stream=True
+            )
+            full_reply = ""
+            for chunk in stream:
+                token = chunk.choices[0].delta.content or ""
+                full_reply += token
+                loop.call_soon_threadsafe(queue.put_nowait, token)
+            memory.add("assistant", full_reply)
+        except Exception as exc:
+            logger.error(f"ask_stream_async producer error: {exc}")
+        finally:
+            loop.call_soon_threadsafe(queue.put_nowait, None)  # sentinel
+
+    loop.run_in_executor(None, _produce)
+
+    while True:
+        token = await queue.get()
+        if token is None:
+            break
+        yield token

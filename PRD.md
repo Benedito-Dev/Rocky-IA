@@ -23,9 +23,9 @@ Marcar `[x]` ao concluir cada item.
 
 ### 1. Experiência de Voz
 
-- [ ] **VAD (Voice Activity Detection)** — detectar automaticamente quando o usuário parou de falar e enviar sem precisar clicar novamente
+- [x] **VAD (Voice Activity Detection)** — detectar automaticamente quando o usuário parou de falar e enviar sem precisar clicar novamente
 - [ ] **Wake word** — "ei Rocky" ativa a escuta sem toque (Web Speech API ou Picovoice)
-- [ ] **Streaming de TTS** — Rocky começa a falar enquanto ainda processa o restante da resposta, eliminando a espera
+- [x] **Streaming de TTS** — Rocky começa a falar enquanto ainda processa o restante da resposta, eliminando a espera
 
 ### 2. Memória Real
 

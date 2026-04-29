@@ -30,6 +30,53 @@
 
 ---
 
+## Task 2 - COMPLETE
+
+**Module:** frontend
+**Task:** VAD — Voice Activity Detection automático
+**Status:** COMPLETA
+**Date:** 2026-04-29
+**Duration:** ~30min
+**Quality Score:** 9/10
+
+**Deliverables:**
+- [x] Detecção de silêncio por RMS (threshold 0.012, 1500ms)
+- [x] Envio automático sem segundo clique na orb
+- [x] Reset do timer ao detectar fala novamente
+- [x] Timeout manual de 4500ms mantido como segurança
+
+**Metrics:**
+- Frontend build: PASS
+- ESLint: 0 errors
+- Backend: sem alterações
+
+---
+
+## Task 3 - COMPLETE
+
+**Module:** tts, llm, frontend
+**Task:** TTS Streaming — Rocky fala enquanto ainda processa
+**Status:** COMPLETA
+**Date:** 2026-04-29
+**Duration:** ~4h
+**Quality Score:** 8/10
+
+**Deliverables:**
+- [x] ask_stream_async com run_in_executor (AsyncGenerator seguro para event loop)
+- [x] flush_sentence + synthesize_sentence no tts_service
+- [x] Endpoint POST /speak-stream SSE com eventos text/audio/done
+- [x] sendMessageWithSpeechStream com AbortSignal no api.js
+- [x] Fila de AudioBufferSourceNode no ChatScreen
+- [x] AudioContext criado dentro de user gesture (fix autoplay policy)
+- [x] Escape cancela stream via AbortController
+
+**Metrics:**
+- Frontend build: PASS
+- ESLint: 0 errors
+- Backend syntax: PASS
+
+---
+
 ## Tasks Concluidas (histórico de agents)
 
 <!-- dedup:documenter:unknown -->

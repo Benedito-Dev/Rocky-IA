@@ -8,6 +8,9 @@ export default function Presence({ state, audioLevel, size, onTap }) {
   const particlesRef = useRef([]);
   const ripplesRef = useRef([]);
   const lastRippleRef = useRef(0);
+  const currentAmpRef = useRef(2.5);
+  const nameAlphaRef = useRef(0.28);
+  const activityRef = useRef(0);
   const [hover, setHover] = useState(false);
 
   useEffect(() => { stateRef.current = state; }, [state]);
@@ -65,11 +68,18 @@ export default function Presence({ state, audioLevel, size, onTap }) {
       const isThinking = s === 'thinking';
       const isSpeaking = s === 'speaking';
 
-      let amp;
-      if (isListening) amp = 6 + lvl * 28;
-      else if (isThinking) amp = 18 + Math.sin(t * 5) * 7;
-      else if (isSpeaking) amp = 22 + lvl * 24;
-      else amp = 2.5 + Math.sin(t * 1.0) * 1.2;
+      // activity: 0 = idle, 1 = fully active — interpolated smoothly
+      const targetActivity = isActive ? 1 : 0;
+      activityRef.current += (targetActivity - activityRef.current) * 0.018;
+      const act = activityRef.current;
+
+      let targetAmp;
+      if (isListening) targetAmp = 6 + lvl * 28;
+      else if (isThinking) targetAmp = 18 + Math.sin(t * 5) * 7;
+      else if (isSpeaking) targetAmp = 22 + lvl * 24;
+      else targetAmp = 2.5 + Math.sin(t * 1.0) * 1.2;
+      currentAmpRef.current += (targetAmp - currentAmpRef.current) * 0.028;
+      const amp = currentAmpRef.current;
 
       ctx.clearRect(0, 0, size, size);
 
@@ -98,8 +108,8 @@ export default function Presence({ state, audioLevel, size, onTap }) {
 
       // Outer ambient halo — soft, large
       const halo = ctx.createRadialGradient(cx, cy, baseR * 0.5, cx, cy, baseR * 2.6);
-      halo.addColorStop(0, `rgba(34,211,238,${isActive ? 0.18 : 0.05 + Math.sin(t * 1.0) * 0.015})`);
-      halo.addColorStop(0.5, `rgba(34,211,238,${isActive ? 0.05 : 0.012})`);
+      halo.addColorStop(0, `rgba(34,211,238,${0.05 + Math.sin(t * 1.0) * 0.015 + act * 0.13})`);
+      halo.addColorStop(0.5, `rgba(34,211,238,${0.012 + act * 0.038})`);
       halo.addColorStop(1, 'rgba(34,211,238,0)');
       ctx.fillStyle = halo;
       ctx.fillRect(0, 0, size, size);
@@ -118,9 +128,9 @@ export default function Presence({ state, audioLevel, size, onTap }) {
       trace(pts);
       ctx.save();
       ctx.shadowColor = '#22d3ee';
-      ctx.shadowBlur = isActive ? 36 : 14;
-      ctx.strokeStyle = `rgba(34,211,238,${isActive ? 0.85 : 0.42})`;
-      ctx.lineWidth = isActive ? 1.8 : 1.1;
+      ctx.shadowBlur = 14 + act * 22;
+      ctx.strokeStyle = `rgba(34,211,238,${0.42 + act * 0.43})`;
+      ctx.lineWidth = 1.1 + act * 0.7;
       ctx.stroke();
       ctx.restore();
 
@@ -137,9 +147,8 @@ export default function Presence({ state, audioLevel, size, onTap }) {
       trace(pts);
       ctx.save();
       ctx.clip();
-      const corePulse = isActive
-        ? 0.55 + Math.sin(t * 3) * 0.15 + lvl * 0.35
-        : 0.18 + Math.sin(t * 1.1) * 0.05;
+      const corePulse = 0.18 + Math.sin(t * 1.1) * 0.05
+        + act * (0.37 + Math.sin(t * 3) * 0.15 + lvl * 0.35);
       const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseR * 0.9);
       core.addColorStop(0, `rgba(34,211,238,${corePulse})`);
       core.addColorStop(0.3, `rgba(34,211,238,${corePulse * 0.45})`);
@@ -214,14 +223,29 @@ export default function Presence({ state, audioLevel, size, onTap }) {
       trace(pts);
       ctx.save();
       ctx.shadowColor = 'rgba(207,250,254,0.7)';
-      ctx.shadowBlur = isActive ? 5 : 2;
-      ctx.strokeStyle = `rgba(207,250,254,${isActive ? 0.5 : 0.2})`;
+      ctx.shadowBlur = 2 + act * 3;
+      ctx.strokeStyle = `rgba(207,250,254,${0.2 + act * 0.3})`;
       ctx.lineWidth = 0.5;
       ctx.stroke();
       ctx.restore();
 
+      // ROCKY name — fades out when active, fades in on idle
+      const targetNameAlpha = isActive ? 0 : 0.28 + Math.sin(t * 1.1) * 0.06;
+      nameAlphaRef.current += (targetNameAlpha - nameAlphaRef.current) * 0.03;
+      if (nameAlphaRef.current > 0.008) {
+        ctx.save();
+        ctx.font = `300 ${Math.round(baseR * 0.38)}px 'JetBrains Mono', monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#22d3ee';
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = `rgba(207,250,254,${nameAlphaRef.current})`;
+        ctx.fillText('ROCKY', cx, cy);
+        ctx.restore();
+      }
+
       // Particles — minimal field
-      const pSpeed = isActive ? 3.0 + lvl * 1.2 : 1.0;
+      const pSpeed = 1.0 + act * (2.0 + lvl * 1.2);
       particlesRef.current.forEach(p => {
         p.angle += p.speed * pSpeed;
         const wobble = Math.sin(t * 1.6 + p.phase) * 6;
@@ -229,7 +253,7 @@ export default function Presence({ state, audioLevel, size, onTap }) {
         const px = cx + r * Math.cos(p.angle);
         const py = cy + r * Math.sin(p.angle);
         const tw = 0.5 + 0.5 * Math.sin(t * 2 + p.phase);
-        const pa = p.alpha * tw * (isActive ? 0.95 : 0.4);
+        const pa = p.alpha * tw * (0.4 + act * 0.55);
         ctx.beginPath();
         ctx.arc(px, py, p.sz, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(34,211,238,${pa})`;
@@ -260,8 +284,8 @@ export default function Presence({ state, audioLevel, size, onTap }) {
       style={{
         display: 'block', width: size, height: size,
         cursor: state === 'idle' ? 'pointer' : 'default',
-        transition: 'filter 0.6s ease',
         filter: `drop-shadow(0 0 ${state === 'idle' ? 28 : 56}px rgba(34,211,238,${state === 'idle' ? 0.28 : 0.55}))`,
+        transition: 'filter 1.8s ease',
       }}
     />
   );

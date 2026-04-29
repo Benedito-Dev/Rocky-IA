@@ -58,3 +58,50 @@ export async function sendAudioWithSpeech(audioBlob) {
   const audioUrl = URL.createObjectURL(replyBlob)
   return { text: data.text, transcription: data.transcription, audioUrl }
 }
+
+/**
+ * Envia mensagem e recebe resposta via SSE com chunks de texto e áudio.
+ * @param {string} message - Mensagem do usuário
+ * @param {object} callbacks
+ * @param {function} callbacks.onText - Chamado a cada token de texto recebido
+ * @param {function} callbacks.onAudio - Chamado a cada chunk de áudio (base64, texto da sentença)
+ * @param {function} callbacks.onDone - Chamado quando o stream termina
+ * @param {AbortSignal} [signal] - AbortSignal para cancelamento via AbortController
+ */
+export async function sendMessageWithSpeechStream(message, { onText, onAudio, onDone }, signal) {
+  const response = await fetch(`${API_URL}speak-stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(`speak-stream HTTP ${response.status}`)
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const parts = buffer.split('\n\n')
+    buffer = parts.pop() // fragmento incompleto fica no buffer
+
+    for (const part of parts) {
+      if (!part.startsWith('data: ')) continue
+      try {
+        const event = JSON.parse(part.slice(6))
+        if (event.type === 'text') onText?.(event.content)
+        else if (event.type === 'audio') onAudio?.(event.data, event.text)
+        else if (event.type === 'done') onDone?.()
+      } catch {
+        // fragmento JSON malformado — ignorar silenciosamente
+      }
+    }
+  }
+}
