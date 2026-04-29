@@ -1,10 +1,42 @@
 @import "tailwindcss";
 
+:root {
+  --cyan: #22d3ee;
+  --cyan-deep: #06b6d4;
+  --cyan-pale: #cffafe;
+  --void: #000000;
+  --serif: 'Fraunces', serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%; width: 100%;
+  background: var(--void);
+  color: var(--cyan-pale);
+  overflow: hidden;
+  font-family: var(--mono);
+}
+
+body {
+  background: radial-gradient(ellipse at 50% 50%, #02090c 0%, #000 70%);
+}
+
+::selection { background: rgba(34,211,238,0.25); color: #fff; }
+
+@keyframes breath { 0%, 100% { opacity: 0.18; } 50% { opacity: 0.45; } }
+@keyframes word-in { from { opacity: 0; filter: blur(8px); transform: translateY(6px); } to { opacity: 1; filter: blur(0); transform: translateY(0); } }
+@keyframes word-out { to { opacity: 0; filter: blur(4px); } }
+@keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes activate { from { opacity: 0; transform: scale(0.6); filter: blur(40px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes log-in { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes line-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes slide-up {
   from { transform: translateY(100%); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
-
 @keyframes fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -13,7 +45,6 @@
 .animate-slide-up {
   animation: slide-up 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
-
 .animate-fade-in {
   animation: fade-in 0.25s ease forwards;
 }
