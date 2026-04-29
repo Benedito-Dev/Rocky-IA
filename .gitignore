@@ -11,7 +11,21 @@ Backend/__pycache__/
 Backend/**/__pycache__/
 Backend/**/*.py[cod]
 
+# Backend — banco SQLite local
+Backend/memory.db
+
 # Sistema
 .DS_Store
 *.suo
 *.sw?
+
+# Personal Agents — artifacts verbose (manter config, STATUS.md e .gitkeeps)
+workspace/plans/*.md
+workspace/implementations/*.md
+workspace/reviews/*.md
+!workspace/plans/.gitkeep
+!workspace/implementations/.gitkeep
+!workspace/reviews/.gitkeep
+
+# Agent memory (conteudo local por projeto)
+.claude/agent-memory/*/MEMORY.md

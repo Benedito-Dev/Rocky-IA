@@ -1,0 +1,82 @@
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "strategist",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/update-status-after-agent.sh strategist",
+            "timeout": 30,
+            "statusMessage": "Registrando conclusao do Strategist..."
+          }
+        ]
+      },
+      {
+        "matcher": "implementer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/validate-implementer-build.sh",
+            "timeout": 180,
+            "statusMessage": "Double-check: validando build do Implementer..."
+          },
+          {
+            "type": "command",
+            "command": "./.claude/scripts/update-status-after-agent.sh implementer",
+            "timeout": 30,
+            "statusMessage": "Registrando conclusao do Implementer..."
+          }
+        ]
+      },
+      {
+        "matcher": "reviewer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/update-status-after-agent.sh reviewer",
+            "timeout": 30,
+            "statusMessage": "Registrando conclusao do Reviewer..."
+          }
+        ]
+      },
+      {
+        "matcher": "documenter",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/update-status-after-agent.sh documenter",
+            "timeout": 30,
+            "statusMessage": "Registrando conclusao do Documenter..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/block-destructive-commands.sh",
+            "timeout": 10,
+            "statusMessage": "Verificando comandos destrutivos..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/session-setup.sh",
+            "timeout": 30,
+            "statusMessage": "Verificando ambiente do projeto..."
+          }
+        ]
+      }
+    ]
+  }
+}
