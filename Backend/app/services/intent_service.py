@@ -28,8 +28,15 @@ Formato:
 ou
 {"type": "conversation"}
 
-"control" = comandos de ação no PC: abrir/fechar apps, volume, print/screenshot, janelas, URLs.
-"conversation" = tudo mais: perguntas, chat, análise, código, conteúdo, etc."""
+"control" = qualquer mensagem que peça ação no PC, mesmo que incompleta ou informal:
+- abrir/fechar apps: "spotify", "abre o chrome", "fecha isso", "o spotify" (continuação de contexto)
+- volume: "aumenta o som", "muda", "tá alto"
+- janelas: "minimiza", "fecha essa janela", "minimiza tudo"
+- print/screenshot: "tira um print", "captura a tela"
+- URLs: "abre o youtube", "vai pro youtube.com"
+Seja generoso: se há dúvida razoável de que é um comando de PC, classifique como "control".
+
+"conversation" = perguntas, chat, análise, código, conteúdo, explicações — claramente não é uma ação."""
 
 _PARSE_SYSTEM = f"""Você extrai comandos de controle de PC. Responda APENAS com JSON válido, sem texto adicional.
 
