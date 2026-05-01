@@ -36,7 +36,7 @@ Marcar `[x]` ao concluir cada item.
 ### 3. Consciência do Ambiente
 
 - [ ] **Contexto de tela** — capturar screenshot e enviar ao LLM; "Rocky, o que tem de errado nesse código?" olhando para o VS Code
-- [ ] **Controle de PC** — ativar o `control_service.py` (placeholder existente): abrir apps, buscar arquivos, executar comandos
+- [x] **Controle de PC** — ativar o `control_service.py` (placeholder existente): abrir apps, buscar arquivos, executar comandos
 - [ ] **Busca web** — tool use no LLM para o Rocky buscar informações em tempo real quando não sabe algo
 
 ### 4. Personalidade e Presença

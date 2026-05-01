@@ -7,7 +7,8 @@ export async function sendMessage(message) {
     body: JSON.stringify({ message }),
   })
   const data = await response.json()
-  return data.response
+  // Retorna objeto com response e action_executed opcional (controle de PC)
+  return { response: data.response, actionExecuted: data.action_executed ?? null }
 }
 
 export async function sendMessageWithSpeech(message) {
@@ -56,7 +57,12 @@ export async function sendAudioWithSpeech(audioBlob) {
     { type: 'audio/mpeg' }
   )
   const audioUrl = URL.createObjectURL(replyBlob)
-  return { text: data.text, transcription: data.transcription, audioUrl }
+  return {
+    text: data.text,
+    transcription: data.transcription,
+    audioUrl,
+    actionExecuted: data.action_executed ?? null,
+  }
 }
 
 export async function summarizeSession() {

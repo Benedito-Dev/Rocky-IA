@@ -4,6 +4,7 @@ from groq import Groq
 from app.core.config import settings
 from app.services.memory_service import memory
 from app.services import long_term_memory_service
+from app.models.control import ControlResult
 from typing import AsyncGenerator, Generator
 
 logger = logging.getLogger(__name__)
@@ -161,3 +162,62 @@ async def ask_stream_async(message: str) -> AsyncGenerator[str, None]:
 
     # Disparar extracao em background apos stream completo
     asyncio.create_task(_extract_facts_background())
+
+
+async def ask_with_control(message: str) -> tuple[str, ControlResult | None]:
+    """
+    Roteamento de intenção: classifica a mensagem, executa ação de controle
+    se necessário, e retorna (texto_resposta, control_result_ou_None).
+
+    Fluxo:
+      1. classify_intent() → "control" | "conversation"
+      2a. "conversation" → ask() normal
+      2b. "control" → parse_command() → control_service.execute() → LLM gera confirmação no estilo Rocky
+    """
+    # Import local para evitar circular (intent_service e control_service importam models)
+    from app.services import intent_service, control_service
+
+    intent = await intent_service.classify_intent(message)
+
+    if intent == "conversation":
+        reply = await ask(message)
+        return reply, None
+
+    # --- Fluxo de controle ---
+    cmd = await intent_service.parse_command(message)
+
+    if cmd is None:
+        # Parse falhou completamente — cai para conversa normal
+        logger.warning("ask_with_control: parse_command retornou None — fallback para conversa")
+        reply = await ask(message)
+        return reply, None
+
+    # Ação destrutiva: retornar pedido de confirmação sem executar
+    if cmd.requires_confirmation:
+        app_name = cmd.params.get("app", "aplicativo")
+        confirm_text = (
+            f"Fechar o {app_name.capitalize()} pode perder trabalho não salvo. "
+            f"Confirmar, pergunta?"
+        )
+        logger.info(f"ask_with_control: confirmação solicitada para ação={cmd.action.value}")
+        # Retornar ControlResult especial indicando que espera confirmação
+        result = ControlResult(
+            success=False,
+            message=confirm_text,
+            action=cmd.action.value,
+            params=cmd.params,
+        )
+        return confirm_text, result
+
+    # Executar ação (síncrona) em thread para não bloquear event loop
+    result = await asyncio.to_thread(control_service.execute, cmd)
+
+    # Gerar confirmação no estilo Rocky via LLM
+    status = "sucesso" if result.success else "falha"
+    confirmation_prompt = (
+        f"Ação executada: {result.action}. Status: {status}. "
+        f"Resultado: {result.message}. "
+        f"Gere uma resposta curta e direta no estilo Rocky confirmando o resultado."
+    )
+    reply = await ask(confirmation_prompt)
+    return reply, result
